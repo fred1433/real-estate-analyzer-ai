@@ -151,7 +151,7 @@ const FreeAnalysisPage = () => {
           </p>
           {analysis.isDemoMode && (
             <div className="bg-yellow-500 text-yellow-900 px-3 py-1 rounded-full text-xs font-medium mt-2 inline-block">
-              DEMO MODE - Connect real OpenAI API for live analysis
+              DEMO MODE - Intelligent analysis simulation
             </div>
           )}
         </div>
