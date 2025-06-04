@@ -1,0 +1,27 @@
+services:
+  # Backend Service
+  - type: web
+    name: real-estate-analyzer-backend
+    env: node
+    buildCommand: cd backend && npm install
+    startCommand: cd backend && npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3001
+      - key: OPENAI_API_KEY
+        sync: false # À configurer dans le dashboard Render
+      - key: JWT_SECRET
+        generateValue: true
+    healthCheckPath: /health
+
+  # Frontend Service  
+  - type: web
+    name: real-estate-analyzer-frontend
+    env: static
+    buildCommand: cd frontend && npm install && npm run build
+    staticPublishPath: frontend/dist
+    envVars:
+      - key: VITE_API_URL
+        value: https://real-estate-analyzer-backend.onrender.com 
