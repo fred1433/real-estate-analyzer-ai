@@ -1,19 +1,21 @@
 services:
   # Backend Service
   - type: web
-    name: real-estate-analyzer-backend
+    name: real-estate-backend
     env: node
-    buildCommand: cd backend && npm install
+    region: oregon
+    plan: free
+    buildCommand: cd backend && npm ci
     startCommand: cd backend && npm start
     envVars:
       - key: NODE_ENV
         value: production
-      - key: PORT
-        value: 3001
-      - key: OPENAI_API_KEY
-        sync: false # À configurer dans le dashboard Render
+      - key: GOOGLE_API_KEY
+        value: AIzaSyB6bgowsUoIjSuXrild8BZ263fc9z-wwNo
       - key: JWT_SECRET
-        generateValue: true
+        value: render_jwt_secret_2025_production_very_long_key
+      - key: FRONTEND_URL
+        value: https://enchanting-treacle-a8c0cf.netlify.app
     healthCheckPath: /health
 
   # Frontend Service  
