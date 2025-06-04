@@ -1,0 +1,12 @@
+{
+  "name": "real-estate-netlify-functions",
+  "version": "1.0.0",
+  "description": "Netlify Functions for Real Estate Analysis with Gemini 2.0 Flash",
+  "main": "analysis.js",
+  "dependencies": {
+    "@google/generative-ai": "^0.21.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+} 

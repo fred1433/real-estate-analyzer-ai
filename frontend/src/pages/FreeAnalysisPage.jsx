@@ -14,7 +14,7 @@ const FreeAnalysisPage = () => {
   const [analysis, setAnalysis] = useState(null);
   const [loadingMessage, setLoadingMessage] = useState('');
   const [progressPercent, setProgressPercent] = useState(0);
-  const [timeRemaining, setTimeRemaining] = useState(30);
+  const [timeRemaining, setTimeRemaining] = useState(15);
 
   // Messages de progression pour informer l'utilisateur
   const loadingMessages = [
@@ -73,22 +73,33 @@ const FreeAnalysisPage = () => {
     setIsLoading(true);
     setLoadingMessage(loadingMessages[0]);
     setProgressPercent(0);
-    setTimeRemaining(30);
+    setTimeRemaining(15);
     
-    // Simuler la progression avec des messages informatifs
+    // Système de progression plus adaptatif
     let messageIndex = 0;
     let progress = 0;
-    let timeLeft = 30;
+    let timeLeft = 15;
+    let elapsedTime = 0;
     
     const progressInterval = setInterval(() => {
-      messageIndex = (messageIndex + 1) % loadingMessages.length;
-      progress = Math.min(90, progress + (90 / loadingMessages.length)); // Max 90% pendant l'attente
-      timeLeft = Math.max(0, timeLeft - 3);
+      elapsedTime += 1;
+      messageIndex = Math.floor((elapsedTime / 15) * loadingMessages.length) % loadingMessages.length;
+      
+      // Progression plus graduelle et réaliste
+      if (elapsedTime <= 12) {
+        // Progression normale pour les 12 premières secondes (0% à 85%)
+        progress = Math.min(85, (elapsedTime / 12) * 85);
+      } else {
+        // Progression plus lente pour les dernières secondes (85% à 95%)
+        progress = Math.min(95, 85 + ((elapsedTime - 12) / 3) * 10);
+      }
+      
+      timeLeft = Math.max(0, 15 - elapsedTime);
       
       setLoadingMessage(loadingMessages[messageIndex]);
-      setProgressPercent(progress);
+      setProgressPercent(Math.round(progress));
       setTimeRemaining(timeLeft);
-    }, 3000); // Changer le message toutes les 3 secondes
+    }, 1000); // Mise à jour chaque seconde pour plus de fluidité
     
     try {
       const response = await analysisAPI.create(formData);
@@ -119,7 +130,7 @@ const FreeAnalysisPage = () => {
         setIsLoading(false);
         setLoadingMessage('');
         setProgressPercent(0);
-        setTimeRemaining(30);
+        setTimeRemaining(15);
       }, 1000);
     }
   };
@@ -320,7 +331,7 @@ const FreeAnalysisPage = () => {
                   <div className="flex items-start gap-2">
                     <div className="w-4 h-4 rounded-full bg-amber-400 flex-shrink-0 mt-0.5"></div>
                     <div className="text-sm">
-                      <p className="font-medium text-amber-800">Analysis takes about 30 seconds</p>
+                      <p className="font-medium text-amber-800">Analysis takes about 10-15 seconds</p>
                       <p className="text-amber-700 mt-1">
                         Our AI performs comprehensive market research including comparable sales, rental analysis, and investment calculations.
                       </p>
