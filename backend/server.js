@@ -109,11 +109,12 @@ app.use((err, req, res, next) => {
   });
 });
 
-const PORT = process.env.PORT || 3001;
+// Configuration du serveur
+const PORT = process.env.PORT || 3001; // Railway utilise PORT
 
+// Démarrage du serveur
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Serveur backend démarré sur le port ${PORT}`);
   console.log(`📊 Environnement: ${process.env.NODE_ENV || 'development'}`);
-  console.log(`🛤️ Plateforme: Railway`);
-  console.log(`🌐 Frontend URL: ${process.env.FRONTEND_URL || 'http://localhost:5173'}`);
+  console.log(`🔗 API disponible sur: http://0.0.0.0:${PORT}/api`);
 }); 
