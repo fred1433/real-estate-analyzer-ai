@@ -3,7 +3,7 @@ import toast from 'react-hot-toast';
 
 // Configuration de base d'Axios
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:3001/api',
+  baseURL: import.meta.env.VITE_API_URL || (process.env.NODE_ENV === 'production' ? '/api' : 'http://localhost:3001/api'),
   timeout: 30000, // 30 secondes pour les analyses IA
   headers: {
     'Content-Type': 'application/json',
@@ -11,7 +11,9 @@ const api = axios.create({
 });
 
 // URL de base pour l'API (utilisée pour fetch si nécessaire)
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+const API_BASE_URL = process.env.NODE_ENV === 'production' 
+  ? '/api'  // Utiliser /api qui sera redirigé vers /.netlify/functions/server
+  : 'http://localhost:3001/api';
 
 // Intercepteur pour ajouter le token JWT automatiquement
 api.interceptors.request.use(
@@ -191,6 +193,36 @@ export const formatRelativeDate = (date) => {
   }
   
   return formatDate(date);
+};
+
+// Fonction pour analyser une propriété
+export const analyzeProperty = async (propertyData) => {
+  try {
+    console.log('Sending analysis request:', propertyData);
+    
+    const response = await fetch(`${API_BASE_URL}/analysis`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(propertyData),
+    });
+
+    console.log('Response status:', response.status);
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ error: 'Network error' }));
+      throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+    }
+
+    const result = await response.json();
+    console.log('Analysis result:', result);
+    
+    return result;
+  } catch (error) {
+    console.error('API Error:', error);
+    throw new Error(error.message || 'Erreur de connexion. Vérifiez votre connexion internet.');
+  }
 };
 
 // Export par défaut de l'instance API
