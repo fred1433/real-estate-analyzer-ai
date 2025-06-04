@@ -1,103 +1,126 @@
-const Database = require('better-sqlite3');
-const path = require('path');
+// Base de données en mémoire pour Railway (évite les problèmes de compilation)
+class InMemoryDatabase {
+  constructor() {
+    this.users = new Map();
+    this.analyses = new Map();
+    this.analytics = new Map();
+    this.counters = { users: 0, analyses: 0, analytics: 0 };
+    console.log('✅ Base de données en mémoire initialisée pour Railway');
+  }
 
-// Créer/connecter à la base de données
-const dbPath = process.env.NODE_ENV === 'production' 
-  ? ':memory:' // Base en mémoire pour Railway 
-  : path.join(__dirname, 'database.sqlite');
+  run(sql, params = []) {
+    // Simulation des opérations SQL courantes
+    const sqlLower = sql.toLowerCase().trim();
+    
+    if (sqlLower.startsWith('insert into analyses')) {
+      const id = ++this.counters.analyses;
+      const analysis = {
+        id,
+        user_id: params[0] || null,
+        property_address: params[1],
+        acquisition_notes: params[2] || null,
+        ai_analysis: params[3],
+        analysis_type: params[4] || 'standard',
+        tokens_used: params[5] || 0,
+        created_at: new Date().toISOString()
+      };
+      this.analyses.set(id, analysis);
+      return { id, changes: 1 };
+    }
+    
+    if (sqlLower.startsWith('insert into analytics')) {
+      const id = ++this.counters.analytics;
+      const analytic = {
+        id,
+        user_id: params[0] || null,
+        action: params[1],
+        details: params[2] || null,
+        created_at: new Date().toISOString()
+      };
+      this.analytics.set(id, analytic);
+      return { id, changes: 1 };
+    }
+    
+    if (sqlLower.startsWith('insert into users')) {
+      const id = ++this.counters.users;
+      const user = {
+        id,
+        email: params[0],
+        password: params[1],
+        first_name: params[2] || null,
+        last_name: params[3] || null,
+        created_at: new Date().toISOString()
+      };
+      this.users.set(id, user);
+      return { id, changes: 1 };
+    }
+    
+    return { changes: 0 };
+  }
 
-const db = new Database(dbPath);
+  get(sql, params = []) {
+    const sqlLower = sql.toLowerCase().trim();
+    
+    if (sqlLower.includes('select') && sqlLower.includes('analyses')) {
+      if (sqlLower.includes('where id = ?')) {
+        return this.analyses.get(params[0]) || null;
+      }
+    }
+    
+    if (sqlLower.includes('select') && sqlLower.includes('users')) {
+      if (sqlLower.includes('where email = ?')) {
+        for (const user of this.users.values()) {
+          if (user.email === params[0]) return user;
+        }
+      }
+      if (sqlLower.includes('where id = ?')) {
+        return this.users.get(params[0]) || null;
+      }
+    }
+    
+    return null;
+  }
 
-console.log(`✅ Base de données SQLite connectée (better-sqlite3)`);
+  all(sql, params = []) {
+    const sqlLower = sql.toLowerCase().trim();
+    
+    if (sqlLower.includes('select') && sqlLower.includes('analyses')) {
+      if (sqlLower.includes('where user_id = ?')) {
+        return Array.from(this.analyses.values()).filter(a => a.user_id === params[0]);
+      }
+      return Array.from(this.analyses.values());
+    }
+    
+    if (sqlLower.includes('select') && sqlLower.includes('users')) {
+      return Array.from(this.users.values());
+    }
+    
+    return [];
+  }
 
-// Configuration pour de meilleures performances
-db.pragma('journal_mode = WAL');
-db.pragma('synchronous = NORMAL');
-db.pragma('foreign_keys = ON');
+  prepare(sql) {
+    // Retourner un objet simulé pour la compatibilité
+    return {
+      run: (...params) => this.run(sql, params),
+      get: (...params) => this.get(sql, params),
+      all: (...params) => this.all(sql, params)
+    };
+  }
 
-// Créer les tables
-const createTables = () => {
-  // Table des utilisateurs
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS users (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      email TEXT UNIQUE NOT NULL,
-      password TEXT NOT NULL,
-      first_name TEXT,
-      last_name TEXT,
-      role TEXT DEFAULT 'user',
-      subscription_type TEXT DEFAULT 'free',
-      credits_remaining INTEGER DEFAULT 5,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    )
-  `);
+  transaction(fn) {
+    // Simulation simple de transaction
+    try {
+      return fn();
+    } catch (err) {
+      throw err;
+    }
+  }
 
-  // Table des analyses
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS analyses (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      user_id INTEGER,
-      property_address TEXT NOT NULL,
-      acquisition_notes TEXT,
-      ai_analysis TEXT NOT NULL,
-      analysis_type TEXT DEFAULT 'standard',
-      tokens_used INTEGER DEFAULT 0,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      FOREIGN KEY (user_id) REFERENCES users(id)
-    )
-  `);
+  close() {
+    console.log('🔒 Base de données en mémoire fermée');
+  }
+}
 
-  // Table d'analytics
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS analytics (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      user_id INTEGER,
-      action TEXT NOT NULL,
-      details TEXT,
-      ip_address TEXT,
-      user_agent TEXT,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      FOREIGN KEY (user_id) REFERENCES users(id)
-    )
-  `);
-
-  console.log('✅ Tables de base de données créées/vérifiées');
-};
-
-// Initialiser les tables
-createTables();
-
-// Fonctions utilitaires avec better-sqlite3
-const database = {
-  // Préparer une requête pour de meilleures performances
-  prepare: (sql) => db.prepare(sql),
-  
-  // Exécuter une requête simple
-  run: (sql, params = []) => {
-    const stmt = db.prepare(sql);
-    return stmt.run(params);
-  },
-  
-  // Récupérer une ligne
-  get: (sql, params = []) => {
-    const stmt = db.prepare(sql);
-    return stmt.get(params);
-  },
-  
-  // Récupérer toutes les lignes
-  all: (sql, params = []) => {
-    const stmt = db.prepare(sql);
-    return stmt.all(params);
-  },
-  
-  // Transaction
-  transaction: (fn) => {
-    return db.transaction(fn);
-  },
-  
-  // Fermer la base
-  close: () => db.close()
-};
+const database = new InMemoryDatabase();
 
 module.exports = database; 
