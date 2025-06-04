@@ -3,7 +3,6 @@ const cors = require('cors');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const path = require('path');
-const serverless = require('serverless-http');
 require('dotenv').config();
 
 const authRoutes = require('./routes/auth');
@@ -22,26 +21,21 @@ app.use(helmet({
       styleSrc: ["'self'", "'unsafe-inline'", "https:"],
       scriptSrc: ["'self'"],
       imgSrc: ["'self'", "data:", "https:"],
-      connectSrc: ["'self'", "https://api.openai.com"]
+      connectSrc: ["'self'", "https://api.openai.com", "https://generativelanguage.googleapis.com"]
     }
   }
 }));
 
-// Configuration CORS pour Netlify
+// Configuration CORS pour Railway
 const corsOptions = {
   origin: process.env.NODE_ENV === 'production' 
-    ? ['https://enchanting-treacle-a8c0cf.netlify.app', 'https://your-custom-domain.com']
+    ? [process.env.FRONTEND_URL, 'https://your-frontend-domain.com']
     : ['http://localhost:5173', 'http://localhost:5174', 'http://localhost:5175'],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
 };
 app.use(cors(corsOptions));
-
-// Servir les fichiers statiques du frontend en production
-if (process.env.NODE_ENV === 'production') {
-  app.use(express.static(path.join(__dirname, 'public')));
-}
 
 // Rate limiting global
 const limiter = rateLimit({
@@ -53,10 +47,10 @@ const limiter = rateLimit({
 });
 app.use(limiter);
 
-// Rate limiting spécifique pour l'API OpenAI
+// Rate limiting spécifique pour l'API Gemini (plus généreux sur Railway)
 const aiLimiter = rateLimit({
   windowMs: 60 * 1000, // 1 minute
-  max: 10, // 10 analyses par minute par IP
+  max: 20, // 20 analyses par minute par IP (plus généreux)
   message: {
     error: 'Limite d\'analyses atteinte. Attendez 1 minute avant de relancer une analyse.'
   }
@@ -72,7 +66,8 @@ app.get('/health', (req, res) => {
     status: 'OK', 
     timestamp: new Date().toISOString(),
     version: '1.0.0',
-    environment: process.env.NODE_ENV || 'development'
+    environment: process.env.NODE_ENV || 'development',
+    platform: 'Railway'
   });
 });
 
@@ -82,13 +77,6 @@ app.use('/api/analysis', aiLimiter, analysisRoutes);
 app.use('/api/user', userRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/payment', paymentRoutes);
-
-// Servir l'app React pour toutes les routes non-API en production
-if (process.env.NODE_ENV === 'production') {
-  app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'index.html'));
-  });
-}
 
 // Gestion des erreurs 404 pour les API uniquement
 app.use('/api/*', (req, res) => {
@@ -121,5 +109,12 @@ app.use((err, req, res, next) => {
   });
 });
 
-// Export pour Netlify Functions
-module.exports.handler = serverless(app); 
+// Configuration du serveur
+const PORT = process.env.PORT || 3001; // Railway utilise PORT
+
+// Démarrage du serveur
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`🚀 Serveur backend démarré sur le port ${PORT}`);
+  console.log(`📊 Environnement: ${process.env.NODE_ENV || 'development'}`);
+  console.log(`🔗 API disponible sur: http://0.0.0.0:${PORT}/api`);
+}); 

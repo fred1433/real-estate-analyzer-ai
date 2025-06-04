@@ -1,110 +1,126 @@
-// Version simplifiée pour Netlify Functions - sans SQLite
-// Utilise un stockage en mémoire temporaire pour les analyses anonymes
-
-class DatabaseManager {
+// Base de données en mémoire pour Railway (évite les problèmes de compilation)
+class InMemoryDatabase {
   constructor() {
-    this.analyses = new Map(); // Stockage temporaire en mémoire
-    this.analytics = [];
-    this.nextId = 1;
-    console.log('✅ Base de données en mémoire initialisée (Netlify Functions)');
+    this.users = new Map();
+    this.analyses = new Map();
+    this.analytics = new Map();
+    this.counters = { users: 0, analyses: 0, analytics: 0 };
+    console.log('✅ Base de données en mémoire initialisée pour Railway');
   }
 
-  // Méthodes utilitaires - compatibilité avec l'API précédente
-  async run(sql, params = []) {
+  run(sql, params = []) {
+    // Simulation des opérations SQL courantes
+    const sqlLower = sql.toLowerCase().trim();
+    
+    if (sqlLower.startsWith('insert into analyses')) {
+      const id = ++this.counters.analyses;
+      const analysis = {
+        id,
+        user_id: params[0] || null,
+        property_address: params[1],
+        acquisition_notes: params[2] || null,
+        ai_analysis: params[3],
+        analysis_type: params[4] || 'standard',
+        tokens_used: params[5] || 0,
+        created_at: new Date().toISOString()
+      };
+      this.analyses.set(id, analysis);
+      return { id, changes: 1 };
+    }
+    
+    if (sqlLower.startsWith('insert into analytics')) {
+      const id = ++this.counters.analytics;
+      const analytic = {
+        id,
+        user_id: params[0] || null,
+        action: params[1],
+        details: params[2] || null,
+        created_at: new Date().toISOString()
+      };
+      this.analytics.set(id, analytic);
+      return { id, changes: 1 };
+    }
+    
+    if (sqlLower.startsWith('insert into users')) {
+      const id = ++this.counters.users;
+      const user = {
+        id,
+        email: params[0],
+        password: params[1],
+        first_name: params[2] || null,
+        last_name: params[3] || null,
+        created_at: new Date().toISOString()
+      };
+      this.users.set(id, user);
+      return { id, changes: 1 };
+    }
+    
+    return { changes: 0 };
+  }
+
+  get(sql, params = []) {
+    const sqlLower = sql.toLowerCase().trim();
+    
+    if (sqlLower.includes('select') && sqlLower.includes('analyses')) {
+      if (sqlLower.includes('where id = ?')) {
+        return this.analyses.get(params[0]) || null;
+      }
+    }
+    
+    if (sqlLower.includes('select') && sqlLower.includes('users')) {
+      if (sqlLower.includes('where email = ?')) {
+        for (const user of this.users.values()) {
+          if (user.email === params[0]) return user;
+        }
+      }
+      if (sqlLower.includes('where id = ?')) {
+        return this.users.get(params[0]) || null;
+      }
+    }
+    
+    return null;
+  }
+
+  all(sql, params = []) {
+    const sqlLower = sql.toLowerCase().trim();
+    
+    if (sqlLower.includes('select') && sqlLower.includes('analyses')) {
+      if (sqlLower.includes('where user_id = ?')) {
+        return Array.from(this.analyses.values()).filter(a => a.user_id === params[0]);
+      }
+      return Array.from(this.analyses.values());
+    }
+    
+    if (sqlLower.includes('select') && sqlLower.includes('users')) {
+      return Array.from(this.users.values());
+    }
+    
+    return [];
+  }
+
+  prepare(sql) {
+    // Retourner un objet simulé pour la compatibilité
+    return {
+      run: (...params) => this.run(sql, params),
+      get: (...params) => this.get(sql, params),
+      all: (...params) => this.all(sql, params)
+    };
+  }
+
+  transaction(fn) {
+    // Simulation simple de transaction
     try {
-      // Simuler l'insertion d'une analyse
-      if (sql.includes('INSERT INTO analyses')) {
-        const id = this.nextId++;
-        const analysis = {
-          id,
-          user_id: params[0],
-          property_address: params[1],
-          acquisition_notes: params[2],
-          ai_analysis: params[3],
-          analysis_type: params[4],
-          tokens_used: params[5],
-          created_at: new Date().toISOString()
-        };
-        this.analyses.set(id, analysis);
-        return { id, changes: 1 };
-      }
-      
-      // Simuler l'insertion d'analytics
-      if (sql.includes('INSERT INTO analytics')) {
-        this.analytics.push({
-          user_id: params[0],
-          action: params[1],
-          details: params[2],
-          created_at: new Date().toISOString()
-        });
-        return { id: this.analytics.length, changes: 1 };
-      }
-      
-      return { id: null, changes: 0 };
+      return fn();
     } catch (err) {
       throw err;
     }
-  }
-
-  async get(sql, params = []) {
-    try {
-      // Pour les requêtes utilisateur (non supportées en mode anonyme)
-      if (sql.includes('SELECT') && sql.includes('users')) {
-        return null;
-      }
-      
-      // Pour récupérer une analyse spécifique
-      if (sql.includes('SELECT') && sql.includes('analyses')) {
-        const id = params[0];
-        return this.analyses.get(id) || null;
-      }
-      
-      return null;
-    } catch (err) {
-      throw err;
-    }
-  }
-
-  async all(sql, params = []) {
-    try {
-      // Retourner toutes les analyses (limité en mémoire)
-      if (sql.includes('SELECT') && sql.includes('analyses')) {
-        return Array.from(this.analyses.values());
-      }
-      
-      return [];
-    } catch (err) {
-      throw err;
-    }
-  }
-
-  // Méthodes synchrones (pour compatibilité)
-  runSync(sql, params = []) {
-    return this.run(sql, params);
-  }
-
-  getSync(sql, params = []) {
-    return this.get(sql, params);
-  }
-
-  allSync(sql, params = []) {
-    return this.all(sql, params);
-  }
-
-  // Pas d'exécution SQL directe en mode mémoire
-  exec(sql) {
-    console.log('ℹ️  SQL exec ignoré en mode mémoire:', sql.substring(0, 50) + '...');
-    return true;
   }
 
   close() {
-    console.log('✅ Nettoyage base de données mémoire');
-    this.analyses.clear();
-    this.analytics = [];
+    console.log('🔒 Base de données en mémoire fermée');
   }
 }
 
-// Créer une instance unique (singleton)
-const database = new DatabaseManager();
+const database = new InMemoryDatabase();
 
 module.exports = database; 

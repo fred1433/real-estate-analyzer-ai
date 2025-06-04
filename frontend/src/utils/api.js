@@ -42,18 +42,18 @@ api.interceptors.response.use(
       localStorage.removeItem('authToken');
       localStorage.removeItem('user');
       window.location.href = '/login';
-      toast.error('Session expirée. Veuillez vous reconnecter.');
+      toast.error('Session expired. Please log in again.');
       return Promise.reject(error);
     }
     
     // Gestion des erreurs de serveur
     if (response?.status >= 500) {
-      toast.error('Erreur serveur. Veuillez réessayer plus tard.');
+      toast.error('Server error. Please try again later.');
     }
     
     // Gestion des erreurs de réseau
     if (!response) {
-      toast.error('Erreur de connexion. Vérifiez votre connexion internet.');
+      toast.error('Connection error. Please check your internet connection.');
     }
     
     return Promise.reject(error);
@@ -109,7 +109,7 @@ export const adminAPI = {
 };
 
 // Utilitaires
-export const handleApiError = (error, defaultMessage = 'Une erreur est survenue') => {
+export const handleApiError = (error, defaultMessage = 'An error occurred') => {
   const message = error?.response?.data?.error || defaultMessage;
   toast.error(message);
   return message;
@@ -144,7 +144,7 @@ export const downloadFile = async (url, filename) => {
     link.remove();
     window.URL.revokeObjectURL(downloadUrl);
   } catch (error) {
-    handleApiError(error, 'Erreur lors du téléchargement');
+    handleApiError(error, 'Download error');
   }
 };
 
